@@ -1,6 +1,3 @@
 flask
 requests
-slack-sdk
-pyngrok
-docker-compose
-jq
+

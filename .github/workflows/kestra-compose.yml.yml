@@ -1,83 +1,36 @@
-name: Deploy Flask App and Kestra with Ngrok
+name: Deploy Kestra Instance
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      
-      # Step 1: Checkout Code
-      - name: Checkout Code
-        uses: actions/checkout@v2
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      # Step 2: Set up Python environment
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.9'
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
 
-      # Step 3: Install Python dependencies
-      - name: Install Dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install -r app/requirements.txt
+    - name: Install Kestra CLI
+      run: |
+        curl -L https://github.com/kestra-io/kestra/releases/download/v0.3.0/kestra-cli-0.3.0-linux-amd64.tar.gz -o kestra-cli.tar.gz
+        tar -xzf kestra-cli.tar.gz
+        sudo mv kestra /usr/local/bin/kestra
 
-      # Step 4: Install Ngrok
-      - name: Install Ngrok
-        run: |
-          wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
-          unzip ngrok-stable-linux-amd64.zip
-          sudo mv ngrok /usr/local/bin
+    - name: Deploy Kestra Dashboard
+      run: |
+        kestra server start --config dashboard/dashboard-config.yaml
+        kestra workflows deploy --config dashboard/kestra-workflows.yaml
 
-      # Step 5: Run Flask app
-      - name: Run Flask App
-        run: |
-          source venv/bin/activate
-          nohup python app/main.py &  # Run Flask app in background
-
-      # Step 6: Expose Flask App with Ngrok
-      - name: Expose Flask App with Ngrok
-        run: |
-          nohup ngrok http 5000 &  # Expose Flask app on port 5000 using Ngrok
-          sleep 10  # Wait for Ngrok to establish the tunnel
-          
-      # Step 7: Capture Ngrok Public URL
-      - name: Capture Ngrok URL
-        id: ngrok_url
-        run: |
-          NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
-          echo "NGROK_URL=$NGROK_URL" >> $GITHUB_ENV
-
-        # Step 10: Deploy Kestra (Run Docker Command Directly)
-      - name: Run Kestra with Docker
-        run: |
-          # Pull the Kestra Docker image
-          docker pull kestra/kestra:latest
-      
-          # Run the Kestra container
-          docker run -d \
-            -p 8080:8080 \
-            --name kestra \
-            -e KESTRA_URI=http://localhost:8080 \
-            kestra/kestra:latest
-      
-          sleep 20  # Wait for Kestra to initialize
-          echo "Kestra is deployed and running at http://localhost:8080""
-
-      # Step 9: Configure Flask app and Kestra with Ngrok URL
-      - name: Update Flask app config with Ngrok URL
-        run: |
-          sed -i "s|KESRA_API_URL=.*|KESRA_API_URL=${{ env.NGROK_URL }}|" app/config.py
-          sed -i "s|SLACK_WEBHOOK_URL=.*|SLACK_WEBHOOK_URL=${{ secrets.SLACK_WEBHOOK_URL }}|" app/config.py
-          
-      # Step 10: Test the deployed app
-      - name: Test Flask App and Kestra Integration
-        run: |
-          curl -X GET ${{ env.NGROK_URL }}/health  # Example test to check if app is live
-
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./dashboard
