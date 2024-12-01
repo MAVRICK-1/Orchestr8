@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kestra-deployment
+  labels:
+    app: kestra
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kestra
+  template:
+    metadata:
+      labels:
+        app: kestra
+    spec:
+      containers:
+        - name: kestra
+          image: your-dockerhub-repo/kestra:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: kestra-secrets
+  
