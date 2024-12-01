@@ -1,0 +1,38 @@
+name: Trigger Kestra Workflow
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, closed, reopened, synchronized]
+  issues:
+    types: [opened, closed, reopened]
+
+jobs:
+  trigger-kestra:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Kestra Workflow
+        env:
+          KESTRA_BASE_URL: ${{ secrets.KESTRA_BASE_URL }}
+          KESTRA_API_TOKEN: ${{ secrets.KESTRA_API_TOKEN }}
+        run: |
+          EVENT_TYPE=${{ github.event_name }}
+          REPO=${{ github.repository }}
+          
+          # Determine which workflow to trigger based on the event
+          if [[ "$EVENT_TYPE" == "pull_request" ]]; then
+            WORKFLOW_ID="auto-assign-reviewers"
+          elif [[ "$EVENT_TYPE" == "issues" ]]; then
+            WORKFLOW_ID="handle-stale-issues"
+          else
+            WORKFLOW_ID="notify-slack"
+          fi
+
+          # Trigger the workflow
+          curl -X POST \
+            -H "Authorization: Bearer $KESTRA_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"namespace": "github", "id": "'"$WORKFLOW_ID"'", "inputs": {"repo": "'"$REPO"'", "eventType": "'"$EVENT_TYPE"'", "slackWebhookUrl": "'"$SLACK_WEBHOOK_URL"'"}}' \
+            $KESTRA_BASE_URL/api/v1/executions

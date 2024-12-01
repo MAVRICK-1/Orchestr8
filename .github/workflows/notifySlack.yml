@@ -1,0 +1,19 @@
+name: Notify Slack
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{
+            "text": "New {{ github.event_name }} in {{ github.repository }}: {{ github.event.html_url }}"
+          }' $SLACK_WEBHOOK_URL

@@ -1,0 +1,16 @@
+id: notify-slack
+namespace: slack
+tasks:
+  - id: fetch-event-details
+    type: io.kestra.plugin.github.tasks.FetchEvent
+    repository: "{{inputs.repo}}"
+    eventType: "{{inputs.eventType}}"
+
+  - id: send-notification
+    type: io.kestra.plugin.slack.tasks.SendMessage
+    url: "{{inputs.slackWebhookUrl}}"
+    text: >
+      New {{inputs.eventType}} in {{inputs.repo}}:
+      - Title: {{tasks.fetch-event-details.outputs.event.title}}
+      - URL: {{tasks.fetch-event-details.outputs.event.html_url}}
+      - User: {{tasks.fetch-event-details.outputs.event.user.login}}

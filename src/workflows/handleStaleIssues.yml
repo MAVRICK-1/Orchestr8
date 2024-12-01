@@ -1,0 +1,23 @@
+id: handle-stale-issues
+namespace: github
+tasks:
+  - id: fetch-stale-issues
+    type: io.kestra.plugin.github.tasks.FetchIssues
+    repository: "{{inputs.repo}}"
+    state: "open"
+    labels:
+      - "stale"
+
+  - id: close-issues
+    type: io.kestra.plugin.github.tasks.CloseIssues
+    repository: "{{inputs.repo}}"
+    issueNumbers: "{{tasks.fetch-stale-issues.outputs.issues[*].number}}"
+
+  - id: send-slack-notification
+    type: io.kestra.plugin.slack.tasks.SendMessage
+    url: "{{inputs.slackWebhookUrl}}"
+    text: >
+      Closed stale issues in {{inputs.repo}}:
+      {% for issue in tasks.fetch-stale-issues.outputs.issues %}
+        - Issue #{{ issue.number }}: {{ issue.title }}
+      {% endfor %}

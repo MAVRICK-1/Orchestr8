@@ -1,0 +1,24 @@
+id: auto-assign-reviewers
+namespace: github
+tasks:
+  - id: fetch-pull-requests
+    type: io.kestra.plugin.github.tasks.FetchPullRequests
+    repository: "{{inputs.repo}}"
+    state: "open"
+
+  - id: assign-reviewers
+    type: io.kestra.plugin.github.tasks.AssignReviewers
+    repository: "{{inputs.repo}}"
+    pullRequestId: "{{tasks.fetch-pull-requests.outputs.pullRequests[*].id}}"
+    reviewers:
+      - "reviewer1"
+      - "reviewer2"
+
+  - id: send-slack-notification
+    type: io.kestra.plugin.slack.tasks.SendMessage
+    url: "{{inputs.slackWebhookUrl}}"
+    text: >
+      Reviewers assigned to PRs in {{inputs.repo}}:
+      {% for pr in tasks.fetch-pull-requests.outputs.pullRequests %}
+        - PR #{{ pr.number }}: {{ pr.title }} assigned to {{ reviewers | join(", ") }}
+      {% endfor %}
