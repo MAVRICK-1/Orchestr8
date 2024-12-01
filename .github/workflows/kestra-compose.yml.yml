@@ -54,21 +54,21 @@ jobs:
           NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
           echo "NGROK_URL=$NGROK_URL" >> $GITHUB_ENV
 
-          Step 10: Deploy Kestra (Run Docker Command Directly)
-          - name: Run Kestra with Docker
-            run: |
-              # Pull the Kestra Docker image
-              docker pull kestra/kestra:latest
-          
-              # Run the Kestra container
-              docker run -d \
-                -p 8080:8080 \
-                --name kestra \
-                -e KESTRA_URI=http://localhost:8080 \
-                kestra/kestra:latest
-          
-              sleep 20  # Wait for Kestra to initialize
-              echo "Kestra is deployed and running at http://localhost:8080""
+        # Step 10: Deploy Kestra (Run Docker Command Directly)
+      - name: Run Kestra with Docker
+        run: |
+          # Pull the Kestra Docker image
+          docker pull kestra/kestra:latest
+      
+          # Run the Kestra container
+          docker run -d \
+            -p 8080:8080 \
+            --name kestra \
+            -e KESTRA_URI=http://localhost:8080 \
+            kestra/kestra:latest
+      
+          sleep 20  # Wait for Kestra to initialize
+          echo "Kestra is deployed and running at http://localhost:8080""
 
       # Step 9: Configure Flask app and Kestra with Ngrok URL
       - name: Update Flask app config with Ngrok URL
