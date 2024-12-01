@@ -1,5 +1,4 @@
-# CI/CD pipeline for Python app
-name: Deploy Python App
+name: Deploy Python App with ngrok
 
 on:
   push:
@@ -9,20 +8,46 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
       
-      - name: Build Docker Image
-        run: |
-          docker build -t slack-github-monitor .
-          echo ${{ secrets.AZURE_REGISTRY }} | docker login -u ${{ secrets.AZURE_USERNAME }} --password-stdin
-          docker tag slack-github-monitor ${{ secrets.AZURE_REGISTRY }}/slack-github-monitor:latest
-          docker push ${{ secrets.AZURE_REGISTRY }}/slack-github-monitor:latest
-      
-      - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v2
+      - name: Set up Python Environment
+        uses: actions/setup-python@v4
         with:
-          app-name: slack-github-monitor
-          slot-name: production
-          images: ${{ secrets.AZURE_REGISTRY }}/slack-github-monitor:latest
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
+
+      - name: Run Application Locally
+        run: |
+          nohup python app/main.py &
+          echo "Application is running locally."
+      
+      - name: Install ngrok
+        run: |
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | tee /etc/apt/trusted.gpg.d/ngrok.asc > /dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | tee /etc/apt/sources.list.d/ngrok.list > /dev/null
+          apt-get update && apt-get install ngrok
+          ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+
+      - name: Start ngrok Tunnel
+        run: |
+          nohup ngrok http 8000 > ngrok.log &
+          sleep 10
+          NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+          echo "ngrok URL: $NGROK_URL"
+          echo "NGROK_URL=$NGROK_URL" >> $GITHUB_ENV
+
+      - name: Notify via Slack (Optional)
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\": \"The application is now accessible via ngrok: ${{ env.NGROK_URL }}\"}" \
+            $SLACK_WEBHOOK_URL

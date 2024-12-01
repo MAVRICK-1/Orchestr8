@@ -1,5 +1,4 @@
-# CI/CD pipeline for deploying Kestra dashboard
-name: Deploy Kestra Dashboard
+name: Deploy Kestra Dashboard with Ngrok
 
 on:
   push:
@@ -12,14 +11,36 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-      
-      - name: Setup Azure CLI
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
-      - name: Deploy Kestra
+
+      - name: Install Dependencies
         run: |
-          az aks get-credentials --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name ${{ secrets.AZURE_CLUSTER_NAME }}
-          helm repo add kestra https://helm.kestra.io
-          helm install kestra kestra/kestra --namespace kestra --create-namespace
+          # Update package lists and install curl & jq (for API response)
+          sudo apt-get update
+          sudo apt-get install -y curl jq
+
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Install Ngrok
+        run: |
+          # Install Ngrok
+          sudo apt-get install -y ngrok
+
+      - name: Run Kestra Locally
+        run: |
+          # Assuming you have Docker installed to run Kestra locally
+          # Or you can run Kestra using other methods if preferred
+          # Running Kestra locally in Docker (if this is your setup)
+          docker run -d -p 8080:8080 kestra/kestra:latest
+
+      - name: Expose Kestra with Ngrok
+        run: |
+          # Expose the local Kestra service running on port 8080 using Ngrok
+          ngrok http 8080 &
+          sleep 10  # Wait for Ngrok to establish the tunnel
+
+      - name: Output Ngrok URL
+        run: |
+          # Output the public URL of the exposed service
+          echo "Ngrok URL: $(curl --silent --show-error http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')"
