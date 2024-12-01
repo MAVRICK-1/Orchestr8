@@ -1,0 +1,43 @@
+name: Slack Notifications
+
+on:
+  issues:
+    types: [opened, edited, closed]
+  pull_request:
+    types: [opened, edited, closed ]
+
+jobs:
+  send-slack-notification:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Slack Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          echo "Preparing Slack notification..."
+          
+          # Define the type of event
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            TYPE="Issue"
+            NUMBER=${{ github.event.issue.number }}
+            TITLE="${{ github.event.issue.title }}"
+            ACTION="${{ github.event.action }}"
+            URL="${{ github.event.issue.html_url }}"
+            USER="${{ github.event.issue.user.login }}"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            TYPE="Pull Request"
+            NUMBER=${{ github.event.pull_request.number }}
+            TITLE="${{ github.event.pull_request.title }}"
+            ACTION="${{ github.event.action }}"
+            URL="${{ github.event.pull_request.html_url }}"
+            USER="${{ github.event.pull_request.user.login }}"
+          fi
+
+          # Format the Slack message
+          MESSAGE="*$TYPE Notification*\n*Title:* $TITLE\n*Number:* #$NUMBER\n*Action:* $ACTION\n*URL:* $URL\n*User:* $USER"
+
+          # Send the Slack message
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\": \"$MESSAGE\"}" \
+            $SLACK_WEBHOOK_URL

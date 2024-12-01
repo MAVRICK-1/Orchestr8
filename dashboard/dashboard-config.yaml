@@ -1,0 +1,4 @@
+namespace: slack_repo_monitor
+ui:
+  enabled: true
+  defaultNamespace: slack_repo_monitor

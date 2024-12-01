@@ -1,0 +1,28 @@
+# CI/CD pipeline for Python app
+name: Deploy Python App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      
+      - name: Build Docker Image
+        run: |
+          docker build -t slack-github-monitor .
+          echo ${{ secrets.AZURE_REGISTRY }} | docker login -u ${{ secrets.AZURE_USERNAME }} --password-stdin
+          docker tag slack-github-monitor ${{ secrets.AZURE_REGISTRY }}/slack-github-monitor:latest
+          docker push ${{ secrets.AZURE_REGISTRY }}/slack-github-monitor:latest
+      
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: slack-github-monitor
+          slot-name: production
+          images: ${{ secrets.AZURE_REGISTRY }}/slack-github-monitor:latest
