@@ -1,18 +1,25 @@
 #!/bin/bash
 
-# Set Azure app name and resource group
-APP_NAME="kestra-dashboard-app"
+# Variables
 RESOURCE_GROUP="kestra-resource-group"
-LOCATION="East US"
+APP_SERVICE_PLAN="kestra-app-service-plan"
+WEB_APP_NAME="kestra-dashboard"
+LOCATION="EastUS"
+
+# Login to Azure
+az login
 
 # Create a resource group
 az group create --name $RESOURCE_GROUP --location $LOCATION
 
-# Deploy Kestra dashboard (via Docker or other method)
-az webapp create --name $APP_NAME --resource-group $RESOURCE_GROUP --plan <your-plan-name> --deployment-container-image-name <your-docker-image>
+# Create an App Service plan
+az appservice plan create --name $APP_SERVICE_PLAN --resource-group $RESOURCE_GROUP --sku B1 --is-linux
 
-# Set environment variables for Azure Web App (like Kestra API URLs)
-az webapp config appsettings set --resource-group $RESOURCE_GROUP --name $APP_NAME \
-  --settings KESTRA_API_URL=<your-kestra-api-url> KESTRA_CLIENT_ID=<your-client-id>
+# Create a web app for the Kestra dashboard
+az webapp create --resource-group $RESOURCE_GROUP --plan $APP_SERVICE_PLAN --name $WEB_APP_NAME --runtime "JRE|11"
 
-echo "Kestra Dashboard deployed at: https://$APP_NAME.azurewebsites.net"
+# Deploy Kestra dashboard files to the Azure Web App (e.g., from the local folder or a GitHub repository)
+# Example using GitHub for CI/CD:
+az webapp deployment source config --name $WEB_APP_NAME --resource-group $RESOURCE_GROUP --repo-url https://github.com/your-username/your-repository --branch main --manual-integration
+
+echo "Kestra dashboard deployed to Azure successfully!"
