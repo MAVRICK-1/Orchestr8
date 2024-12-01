@@ -12,5 +12,11 @@ export const assignIssue = async (username: string, issueNumber: string, repo: s
     body: JSON.stringify({ assignees: [username] }),
   });
 
-  return response.ok ? { success: true } : { success: false, message: await response.text() };
+  if (!response.ok) {
+    const errorMessage = await response.text();
+    console.error(`Failed to assign issue: ${errorMessage}`);
+    return { success: false, message: errorMessage };
+  }
+
+  return { success: true };
 };

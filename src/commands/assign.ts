@@ -1,22 +1,25 @@
-import { exec } from "child_process";
+import { App } from "@slack/bolt";
+import { assignIssue } from "../services/github"; // import your function
+import { config } from "../config";
 
-// Command to assign user to an issue
-export const handleAssign = async ({ command, ack, respond }: any) => {
-  await ack();
+import { SlackCommandMiddlewareArgs, SlashCommand } from "@slack/bolt";
 
-  const [owner, repo, issue, assignee] = command.text.split(" ");
-  
-  if (!owner || !repo || !issue || !assignee) {
-    return respond("Usage: /assign <owner> <repo> <issue> <assignee>");
+export const handleAssign = async ({ command, ack, respond }: SlackCommandMiddlewareArgs) => {
+  await ack(); // Acknowledge the Slack command
+
+  const args = command.text.split(" ");
+  if (args.length < 2) {
+    return respond({
+      text: "Please provide a username and issue number in the format: `/assign @username issue_number repository_name`",
+    });
   }
 
-  // Execute the GitHub assign task
-  const assignCommand = `node app.js assign --owner=${owner} --repo=${repo} --issue=${issue} --assignee=${assignee}`;
+  const [username, issueNumber, repo] = args;
+  const result = await assignIssue(username, issueNumber, repo);
 
-  exec(assignCommand, (error, stdout, stderr) => {
-    if (error) {
-      return respond(`Error: ${stderr}`);
-    }
-    respond(`Assigned ${assignee} to issue #${issue} in ${owner}/${repo}`);
-  });
+  if (result.success) {
+    return respond({ text: `Successfully assigned ${username} to issue #${issueNumber}` });
+  } else {
+    return respond({ text: `Failed to assign issue: ${result.message}` });
+  }
 };
